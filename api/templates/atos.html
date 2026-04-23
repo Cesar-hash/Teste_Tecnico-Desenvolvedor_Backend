@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atos da Receita Federal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2em;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 2px solid #003366;
+            padding-bottom: 1em;
+            margin-bottom: 1.5em;
+        }
+
+        .topbar h1 {
+            color: #003366;
+            margin: 0;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button,
+        .link-btn {
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+
+        button:hover,
+        .link-btn:hover {
+            background-color: #003366;
+        }
+
+        button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+
+        .secondary-btn {
+            background-color: #6c757d;
+        }
+
+        .danger-btn {
+            background-color: #dc3545;
+        }
+
+        .success-btn {
+            background-color: #198754;
+        }
+
+        #status-message {
+            margin-bottom: 1em;
+            padding: 12px;
+            border-radius: 6px;
+            background-color: #e7f3fe;
+            border: 1px solid #b3d7f7;
+            color: #004085;
+            text-align: center;
+            display: none;
+        }
+
+        .filters {
+            background: #fff;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .filters form {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: end;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            min-width: 220px;
+        }
+
+        .field label {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .field input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1em;
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+            background: #fff;
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        thead {
+            background-color: #003366;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        tr:hover {
+            background-color: #ddd;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #777;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        .modal {
+            background: white;
+            width: 100%;
+            max-width: 600px;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal h2 {
+            margin-top: 0;
+            color: #003366;
+        }
+
+        .modal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .modal-grid .full {
+            grid-column: 1 / -1;
+        }
+
+        .modal input,
+        .modal textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+
+        .modal textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            window.location.href = "/api/v1/web/login";
+        }
+    </script>
+
+    <div class="topbar">
+        <h1>Atos Normativos da Receita Federal</h1>
+
+        <div class="topbar-actions">
+            <a class="link-btn secondary-btn" href="/api/v1/web/dashboard">Dashboard</a>
+            <button class="success-btn" type="button" onclick="openCreateModal()">Novo Ato</button>
+            <button id="rpa-button" type="button" onclick="triggerRPA()">Iniciar Extração (RPA)</button>
+            <button class="danger-btn" type="button" onclick="logout()">Sair</button>
+        </div>
+    </div>
+
+    <p id="status-message"></p>
+
+    <div class="filters">
+        <form method="get" action="/api/v1/web/atos">
+            <div class="field">
+                <label for="search">Pesquisar</label>
+                <input
+                    type="text"
+                    id="search"
+                    name="search"
+                    value="{{ search }}"
+                    placeholder="Tipo, número, órgão ou ementa"
+                >
+            </div>
+
+            <div class="field">
+                <label for="data_publicacao">Data de publicação</label>
+                <input
+                    type="date"
+                    id="data_publicacao"
+                    name="data_publicacao"
+                    value="{{ data_publicacao }}"
+                >
+            </div>
+
+            <div class="field">
+                <button type="submit">Filtrar</button>
+            </div>
+
+            <div class="field">
+                <a class="link-btn secondary-btn" href="/api/v1/web/atos">Limpar filtros</a>
+            </div>
+        </form>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Tipo do Ato</th>
+                <th>Número</th>
+                <th>Data de Publicação</th>
+                <th>Órgão</th>
+                <th>Ementa</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if atos %}
+                {% for ato in atos %}
+                <tr>
+                    <td>{{ ato.id }}</td>
+                    <td>{{ ato.tipo_ato }}</td>
+                    <td>{{ ato.numero_ato }}</td>
+                    <td>{{ ato.data_publicacao.strftime('%d/%m/%Y') if ato.data_publicacao else '' }}</td>
+                    <td>{{ ato.orgao }}</td>
+                    <td>{{ ato.ementa }}</td>
+                    <td>
+                        <div class="actions">
+                            <button
+                                type="button"
+                                class="secondary-btn edit-btn"
+                                data-id="{{ ato.id }}"
+                                data-tipo-ato="{{ ato.tipo_ato }}"
+                                data-numero-ato="{{ ato.numero_ato }}"
+                                data-orgao="{{ ato.orgao }}"
+                                data-data-publicacao="{{ ato.data_publicacao.isoformat() if ato.data_publicacao else '' }}"
+                                data-ementa="{{ ato.ementa }}"
+                            >
+                                Editar
+                            </button>
+
+                            <button
+                                type="button"
+                                class="danger-btn"
+                                onclick="deleteAto({{ ato.id }})"
+                            >
+                                Excluir
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="7" class="no-data">
+                        Nenhum ato encontrado no banco de dados.
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div id="atoModalBackdrop" class="modal-backdrop">
+        <div class="modal">
+            <h2 id="modalTitle">Novo Ato</h2>
+
+            <form id="atoForm">
+                <input type="hidden" id="ato_id">
+
+                <div class="modal-grid">
+                    <div>
+                        <label for="tipo_ato">Tipo do ato</label>
+                        <input type="text" id="tipo_ato" required>
+                    </div>
+
+                    <div>
+                        <label for="numero_ato">Número</label>
+                        <input type="text" id="numero_ato" required>
+                    </div>
+
+                    <div>
+                        <label for="orgao">Órgão</label>
+                        <input type="text" id="orgao" required>
+                    </div>
+
+                    <div>
+                        <label for="data_publicacao_modal">Data de publicação</label>
+                        <input type="date" id="data_publicacao_modal" required>
+                    </div>
+
+                    <div class="full">
+                        <label for="ementa">Ementa</label>
+                        <textarea id="ementa" required></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="secondary-btn" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="success-btn">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const statusMessage = document.getElementById("status-message");
+        const modalBackdrop = document.getElementById("atoModalBackdrop");
+        const atoForm = document.getElementById("atoForm");
+
+        function showMessage(message, isError = false) {
+            statusMessage.style.display = "block";
+            statusMessage.innerText = message;
+            statusMessage.style.backgroundColor = isError ? "#fde2e1" : "#e7f3fe";
+            statusMessage.style.borderColor = isError ? "#f5b7b1" : "#b3d7f7";
+            statusMessage.style.color = isError ? "#a61b1b" : "#004085";
+        }
+
+        function logout() {
+            localStorage.removeItem("access_token");
+            window.location.href = "/api/v1/web/login";
+        }
+
+        function openCreateModal() {
+            document.getElementById("modalTitle").innerText = "Novo Ato";
+            document.getElementById("ato_id").value = "";
+            document.getElementById("tipo_ato").value = "";
+            document.getElementById("numero_ato").value = "";
+            document.getElementById("orgao").value = "";
+            document.getElementById("data_publicacao_modal").value = "";
+            document.getElementById("ementa").value = "";
+            modalBackdrop.style.display = "flex";
+        }
+
+        function openEditModal(id, tipoAto, numeroAto, orgao, dataPublicacao, ementa) {
+            document.getElementById("modalTitle").innerText = "Editar Ato";
+            document.getElementById("ato_id").value = id;
+            document.getElementById("tipo_ato").value = tipoAto || "";
+            document.getElementById("numero_ato").value = numeroAto || "";
+            document.getElementById("orgao").value = orgao || "";
+            document.getElementById("data_publicacao_modal").value = dataPublicacao || "";
+            document.getElementById("ementa").value = ementa || "";
+            modalBackdrop.style.display = "flex";
+        }
+
+        function closeModal() {
+            modalBackdrop.style.display = "none";
+        }
+
+        document.querySelectorAll(".edit-btn").forEach((button) => {
+            button.addEventListener("click", () => {
+                openEditModal(
+                    button.dataset.id,
+                    button.dataset.tipoAto,
+                    button.dataset.numeroAto,
+                    button.dataset.orgao,
+                    button.dataset.dataPublicacao,
+                    button.dataset.ementa
+                );
+            });
+        });
+
+        atoForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const atoId = document.getElementById("ato_id").value;
+            const payload = {
+                tipo_ato: document.getElementById("tipo_ato").value.trim(),
+                numero_ato: document.getElementById("numero_ato").value.trim(),
+                orgao: document.getElementById("orgao").value.trim(),
+                data_publicacao: document.getElementById("data_publicacao_modal").value,
+                ementa: document.getElementById("ementa").value.trim()
+            };
+
+            const isEdit = Boolean(atoId);
+            const url = isEdit ? `/api/v1/atos/${atoId}` : "/api/v1/atos/";
+            const method = isEdit ? "PUT" : "POST";
+
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    showMessage(data.detail || "Erro ao salvar ato.", true);
+                    return;
+                }
+
+                showMessage(isEdit ? "Ato atualizado com sucesso." : "Ato criado com sucesso.");
+                closeModal();
+                setTimeout(() => window.location.reload(), 700);
+            } catch (error) {
+                showMessage("Erro de conexão ao salvar o ato.", true);
+            }
+        });
+
+        async function deleteAto(atoId) {
+            const confirmed = confirm("Deseja realmente excluir este ato?");
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`/api/v1/atos/${atoId}`, {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    showMessage(data.detail || "Erro ao excluir ato.", true);
+                    return;
+                }
+
+                showMessage("Ato excluído com sucesso.");
+                setTimeout(() => window.location.reload(), 700);
+            } catch (error) {
+                showMessage("Erro de conexão ao excluir o ato.", true);
+            }
+        }
+
+        async function triggerRPA() {
+            const button = document.getElementById("rpa-button");
+            button.disabled = true;
+            button.innerText = "Executando...";
+
+            showMessage("Iniciando extração... Aguarde.");
+
+            try {
+                const response = await fetch("/api/v1/rpa/trigger-extraction", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+                    }
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    showMessage(data.detail || "Erro ao iniciar a extração.", true);
+                    button.disabled = false;
+                    button.innerText = "Iniciar Extração (RPA)";
+                    return;
+                }
+
+                showMessage(`Extração concluída. Encontrados: ${data.found || 0}. Inseridos: ${data.inserted || 0}.`);
+                setTimeout(() => window.location.reload(), 1200);
+            } catch (error) {
+                showMessage("Erro de conexão ao tentar iniciar a extração.", true);
+                button.disabled = false;
+                button.innerText = "Iniciar Extração (RPA)";
+            }
+        }
+    </script>
+</body>
+</html>

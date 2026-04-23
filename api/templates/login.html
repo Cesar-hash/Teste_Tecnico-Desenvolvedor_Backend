@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - API de Atos da RFB</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0d6efd, #0a58ca);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            box-sizing: border-box;
+        }
+
+        .auth-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 460px;
+            padding: 32px;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 28px;
+            color: #222;
+        }
+
+        .subtitle {
+            margin-top: 0;
+            margin-bottom: 24px;
+            color: #666;
+        }
+
+        .form-panel {
+            display: none;
+        }
+
+        .form-panel.active {
+            display: block;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 16px;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #333;
+        }
+
+        input {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        button.submit-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #0d6efd;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        button.submit-btn:hover {
+            background: #0b5ed7;
+        }
+
+        .hint {
+            margin-top: 14px;
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+        }
+
+        .message {
+            display: none;
+            margin-bottom: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .message.error {
+            background: #fde2e1;
+            color: #a61b1b;
+            border: 1px solid #f5b7b1;
+        }
+
+        .message.success {
+            background: #e7f6ea;
+            color: #1f6b2a;
+            border: 1px solid #b7e1c0;
+        }
+
+        .switch-link {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .switch-link a {
+            color: #0d6efd;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .switch-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <h1>Acesso ao sistema</h1>
+        <p class="subtitle">Entre com seu usuário ou faça seu primeiro cadastro.</p>
+
+        <div id="errorBox" class="message error"></div>
+        <div id="successBox" class="message success"></div>
+
+        <div id="panelLogin" class="form-panel active">
+            <form id="loginForm">
+                <div class="field">
+                    <label for="login_username">Usuário</label>
+                    <input
+                        type="text"
+                        id="login_username"
+                        name="login_username"
+                        placeholder="Digite seu usuário"
+                        required
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="login_password">Senha</label>
+                    <input
+                        type="password"
+                        id="login_password"
+                        name="login_password"
+                        placeholder="Digite sua senha"
+                        required
+                    >
+                </div>
+
+                <button id="tabLogin" class="submit-btn" type="submit">Entrar</button>
+            </form>
+
+            <p class="hint">
+                No primeiro acesso, utilize o link abaixo para criar o usuário.
+            </p>
+
+            <p class="switch-link">
+                <a href="#" id="goToRegister">Primeiro acesso? Cadastre-se</a>
+            </p>
+        </div>
+
+        <div id="panelRegister" class="form-panel">
+            <form id="registerForm">
+                <div class="field">
+                    <label for="register_username">Novo usuário</label>
+                    <input
+                        type="text"
+                        id="register_username"
+                        name="register_username"
+                        placeholder="Escolha um nome de usuário"
+                        required
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="register_password">Senha</label>
+                    <input
+                        type="password"
+                        id="register_password"
+                        name="register_password"
+                        placeholder="Crie uma senha"
+                        required
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="register_password_confirm">Confirmar senha</label>
+                    <input
+                        type="password"
+                        id="register_password_confirm"
+                        name="register_password_confirm"
+                        placeholder="Repita a senha"
+                        required
+                    >
+                </div>
+
+                <button class="submit-btn" type="submit">Registrar</button>
+            </form>
+
+            <p class="hint">
+                Após o cadastro, o sistema fará o login automaticamente.
+            </p>
+
+            <p class="switch-link">
+                <a href="#" id="backToLogin">Já tem conta? Entrar</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const goToRegister = document.getElementById("goToRegister");
+        const backToLogin = document.getElementById("backToLogin");
+
+        const panelLogin = document.getElementById("panelLogin");
+        const panelRegister = document.getElementById("panelRegister");
+        const errorBox = document.getElementById("errorBox");
+        const successBox = document.getElementById("successBox");
+
+        function showError(message) {
+            successBox.style.display = "none";
+            errorBox.textContent = message;
+            errorBox.style.display = "block";
+        }
+
+        function showSuccess(message) {
+            errorBox.style.display = "none";
+            successBox.textContent = message;
+            successBox.style.display = "block";
+        }
+
+        function clearMessages() {
+            errorBox.style.display = "none";
+            successBox.style.display = "none";
+        }
+
+        function activateLoginTab() {
+            clearMessages();
+            panelLogin.classList.add("active");
+            panelRegister.classList.remove("active");
+        }
+
+        function activateRegisterTab() {
+            clearMessages();
+            panelRegister.classList.add("active");
+            panelLogin.classList.remove("active");
+        }
+
+        goToRegister.addEventListener("click", (e) => {
+            e.preventDefault();
+            activateRegisterTab();
+        });
+
+        backToLogin.addEventListener("click", (e) => {
+            e.preventDefault();
+            activateLoginTab();
+        });
+
+        async function loginUser(username, password) {
+            const response = await fetch("/api/v1/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.detail || "Não foi possível autenticar.");
+            }
+
+            localStorage.setItem("access_token", data.access_token);
+            showSuccess("Login realizado com sucesso. Redirecionando...");
+
+            setTimeout(() => {
+                window.location.href = "/api/v1/web/atos";
+            }, 800);
+        }
+
+        document.getElementById("loginForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            clearMessages();
+
+            const username = document.getElementById("login_username").value.trim();
+            const password = document.getElementById("login_password").value;
+
+            try {
+                await loginUser(username, password);
+            } catch (error) {
+                showError(error.message || "Erro de conexão com a aplicação.");
+            }
+        });
+
+        document.getElementById("registerForm").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            clearMessages();
+
+            const username = document.getElementById("register_username").value.trim();
+            const password = document.getElementById("register_password").value;
+            const passwordConfirm = document.getElementById("register_password_confirm").value;
+
+            if (password !== passwordConfirm) {
+                showError("A confirmação da senha não confere.");
+                return;
+            }
+
+            if (username.length < 3) {
+                showError("O usuário deve ter pelo menos 3 caracteres.");
+                return;
+            }
+
+            if (password.length < 4) {
+                showError("A senha deve ter pelo menos 4 caracteres.");
+                return;
+            }
+
+            try {
+                const registerResponse = await fetch("/api/v1/auth/register", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        username,
+                        password
+                    })
+                });
+
+                const registerData = await registerResponse.json();
+
+                if (!registerResponse.ok) {
+                    showError(registerData.detail || "Não foi possível registrar o usuário.");
+                    return;
+                }
+
+                showSuccess("Usuário registrado com sucesso. Fazendo login...");
+                await loginUser(username, password);
+            } catch (error) {
+                showError(error.message || "Erro de conexão com a aplicação.");
+            }
+        });
+    </script>
+</body>
+</html>
