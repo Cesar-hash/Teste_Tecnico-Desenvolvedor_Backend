@@ -98,9 +98,8 @@ API backend para coleta automatizada (web scraping), persistência e disponibili
 ### Passos:
 1. Clone o repositório:
 ```bash
-git clone [URL_DO_SEU_REPOSITORIO]
-cd [NOME_DA_PASTA]
-cp .env.example .env
+git clone https://github.com/Cesar-hash/Teste_Tecnico-Desenvolvedor_Backend.git
+cd Teste_Tecnico-Desenvolvedor_Backend
 ```
 
 2. Suba os containers:
