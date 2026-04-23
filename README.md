@@ -108,8 +108,8 @@ docker-compose up -d --build
 ```
 
 3. Acessar a API e página de login:
-👉 Swagger: http://localhost:8000/docs
 
+👉 Swagger: http://localhost:8000/docs
 👉 Login page: http://localhost:8000/api/v1/web/login
 
 ---
